@@ -72,16 +72,16 @@ For 4+ slide changes, regeneration is often faster and safer.
 
 ## Edit Workflow
 
-1. **Extract inventory first:**
+1. **Extract inventory first** (this is the schema `--replace` consumes):
    ```bash
-   python edit.py deck.pptx --inventory
+   python edit.py deck.pptx --inventory -o inv.json
    ```
 
-2. **Review shape IDs and content**
+2. **Review shape IDs and content in `inv.json`**. Each slide/shape has a `paragraphs` array; the text you want to change lives under `paragraphs[i].text`.
 
-3. **Apply targeted replacements:**
+3. **Apply targeted replacements** (edit the `text` field(s), then pass the file back):
    ```bash
-   python edit.py deck.pptx --replace '{"slide":3,"old":"2025","new":"2026"}'
+   python edit.py deck.pptx --replace inv.json -o edited.pptx
    ```
 
 4. **Or reorder slides:**

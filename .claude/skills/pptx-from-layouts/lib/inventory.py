@@ -173,8 +173,14 @@ class ParagraphData:
                 or pPr.find(f"{ns}buAutoNum") is not None
             ):
                 self.bullet = True
-                if hasattr(paragraph, "level"):
-                    self.level = paragraph.level
+
+        # Capture indent level whenever it differs from the default (0). Some
+        # templates define bullet characters in the layout master's `lstStyle`
+        # for specific levels (lvl="1", etc.) rather than on the paragraph's
+        # own pPr — so level must be preserved independently of self.bullet to
+        # keep those inherited bullets on round-trip.
+        if hasattr(paragraph, "level") and paragraph.level:
+            self.level = paragraph.level
 
         # Add alignment if not LEFT (default)
         if hasattr(paragraph, "alignment") and paragraph.alignment is not None:

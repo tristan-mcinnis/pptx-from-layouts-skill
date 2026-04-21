@@ -21,11 +21,48 @@ Most PowerPoint generation tools treat templates as backgrounds to overlay text 
 
 ## Quick Start
 
-### Installation
+### Install it yourself (one prompt)
+
+Paste this into Claude Code, Codex, OpenCode, or any other coding agent and it'll
+install the skill, wire it up to your own template, and leave you with a working
+`generate.py` you can run from anywhere:
+
+```
+Please install the pptx-from-layouts Claude skill from
+https://github.com/tristan-mcinnis/pptx-from-layouts-skill and adapt it to my
+setup:
+
+1. Clone the repo to a scratch directory, or fetch the .claude/skills/pptx-from-layouts
+   folder directly.
+2. Copy that folder to ~/.claude/skills/pptx-from-layouts/ (create the parent if
+   needed). Confirm `~/.claude/skills/pptx-from-layouts/SKILL.md` exists.
+3. Install the one Python dep: `pip install python-pptx` (Python 3.10+).
+4. Ask me which PowerPoint template I want to use as the default. If I give you
+   one, copy it to ~/.claude/skills/pptx-from-layouts/templates/default.pptx
+   and run
+     python ~/.claude/skills/pptx-from-layouts/scripts/profile.py \
+       ~/.claude/skills/pptx-from-layouts/templates/default.pptx --generate-config
+   to emit the matching config JSON alongside it. If I don't have one, use the
+   bundled Inner Chapter template shipped in templates/.
+5. Smoke test: generate the canonical example with my new default template and
+   open it so I can eyeball it.
+6. Tell me the three commands I'll actually use day-to-day (generate, edit, validate)
+   with my template path baked in.
+```
+
+### Or install it manually
 
 ```bash
-# Copy to your Claude Code skills directory
+# 1. Clone or download this repo
+git clone https://github.com/tristan-mcinnis/pptx-from-layouts-skill.git
+cd pptx-from-layouts-skill
+
+# 2. Copy the skill into your Claude Code skills directory
+mkdir -p ~/.claude/skills
 cp -r .claude/skills/pptx-from-layouts ~/.claude/skills/
+
+# 3. Install the one Python dependency
+pip install python-pptx
 ```
 
 ### Generate a Presentation
@@ -108,7 +145,7 @@ Transforming operations through digital innovation
 |----------|---------|
 | New presentation from outline | `generate.py outline.md -o deck.pptx` |
 | Use corporate template | `profile.py template.pptx` then generate |
-| Fix typos in existing deck | `edit.py deck.pptx --replace '{"old":"2025","new":"2026"}'` |
+| Fix typos in existing deck | `edit.py deck.pptx --inventory -o inv.json` → edit `paragraphs[i].text` → `edit.py deck.pptx --replace inv.json` |
 | Reorder slides | `edit.py deck.pptx --reorder "0,2,1,3,4"` |
 
 ## Mode Decision

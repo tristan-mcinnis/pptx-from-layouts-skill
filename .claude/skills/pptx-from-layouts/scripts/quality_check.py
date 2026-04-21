@@ -44,12 +44,16 @@ try:
 except ImportError:
     HAS_PIL = False
 
-# Import Tier 2 validators
-from typography_hierarchy import TypographyHierarchyValidator
-from visual_type_checker import VisualTypeChecker
-from column_balance import ColumnBalanceAnalyzer
-from whitespace_analyzer import WhitespaceAnalyzer
-from layout_coverage_analyzer import LayoutCoverageAnalyzer
+# Import Tier 2 validators (optional — not shipped in the minimal distribution)
+try:
+    from typography_hierarchy import TypographyHierarchyValidator
+    from visual_type_checker import VisualTypeChecker
+    from column_balance import ColumnBalanceAnalyzer
+    from whitespace_analyzer import WhitespaceAnalyzer
+    from layout_coverage_analyzer import LayoutCoverageAnalyzer
+    HAS_TIER2 = True
+except ImportError:
+    HAS_TIER2 = False
 
 
 # ============================================================================
@@ -916,8 +920,9 @@ class QualityChecker:
         core_score = 100 - (tier1_errors * 10) - (tier1_warnings * 3) - (tier1_info * 1)
         core_score = max(0.0, min(100.0, core_score))
 
-        # Run Tier 2 checks (parallel by default)
-        self._run_tier2_validators(parallel=parallel)
+        # Run Tier 2 checks (parallel by default) — only if validators are available
+        if HAS_TIER2:
+            self._run_tier2_validators(parallel=parallel)
 
         # Get layout coverage
         layout_coverage = self._analyze_layout_coverage()

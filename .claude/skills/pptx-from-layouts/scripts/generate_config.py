@@ -347,6 +347,11 @@ def generate_config(
         colors = profile_data.get("master_styles", {}).get("color_scheme", {})
         fonts = profile_data.get("master_styles", {}).get("font_scheme", {})
         layouts = profile_data.get("layouts", [])
+        # profile_template.py does not emit `name_normalized`; compute it here so
+        # infer_layout_mappings can do its substring match on a normalized key.
+        for layout in layouts:
+            if "name_normalized" not in layout:
+                layout["name_normalized"] = layout["name"].lower().replace(' ', '-').replace('_', '-')
         if not template_name:
             template_name = Path(profile_data.get("template_file", "unknown")).stem
     else:

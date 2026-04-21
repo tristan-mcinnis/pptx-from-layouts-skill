@@ -13,9 +13,10 @@ Generate consultant-ready PowerPoint presentations from markdown outlines.
 # Generate from outline (Inner Chapter template)
 python .claude/skills/pptx-from-layouts/scripts/generate.py outline.md -o deck.pptx
 
-# Edit existing deck
-python .claude/skills/pptx-from-layouts/scripts/edit.py deck.pptx --inventory
-python .claude/skills/pptx-from-layouts/scripts/edit.py deck.pptx --replace '{"slide":3,"old":"2025","new":"2026"}'
+# Edit existing deck (dump inventory, edit its JSON, apply as a file)
+python .claude/skills/pptx-from-layouts/scripts/edit.py deck.pptx --inventory -o inv.json
+#   edit inv.json: change the text on the paragraph(s) you care about
+python .claude/skills/pptx-from-layouts/scripts/edit.py deck.pptx --replace inv.json -o edited.pptx
 
 # Validate quality
 python .claude/skills/pptx-from-layouts/scripts/validate.py deck.pptx
@@ -52,15 +53,13 @@ python .claude/skills/pptx-from-layouts/scripts/generate.py outline.md --layout-
 Use for text-only changes to < 30% of slides.
 
 ```bash
-# Extract content inventory
-python .claude/skills/pptx-from-layouts/scripts/edit.py deck.pptx --inventory
+# Extract content inventory (this is the schema replace.py consumes)
+python .claude/skills/pptx-from-layouts/scripts/edit.py deck.pptx --inventory -o inv.json
 
-# Replace text (inline JSON)
-python .claude/skills/pptx-from-layouts/scripts/edit.py deck.pptx \
-    --replace '{"slide":3,"old":"Q1 2025","new":"Q2 2026"}'
-
-# Replace from file
-python .claude/skills/pptx-from-layouts/scripts/edit.py deck.pptx --replace changes.json -o edited.pptx
+# Apply replacements (pass an edited inventory-shaped JSON file)
+# Edit inv.json: find the slide-N/shape-N/paragraphs[i].text you want to change,
+# leave everything else as-is, then pass the file back:
+python .claude/skills/pptx-from-layouts/scripts/edit.py deck.pptx --replace inv.json -o edited.pptx
 
 # Reorder slides (0-indexed)
 python .claude/skills/pptx-from-layouts/scripts/edit.py deck.pptx --reorder "0,2,1,3,4" -o reordered.pptx
@@ -169,15 +168,17 @@ python .claude/skills/pptx-from-layouts/scripts/generate.py outline.md -o projec
 ## Example: Edit Workflow
 
 ```bash
-# 1. Get inventory
-python .claude/skills/pptx-from-layouts/scripts/edit.py project.pptx --inventory
-# Shows: Slide 3, Shape 5: "Q1 2025"
+# 1. Dump the inventory — this is the schema replace.py consumes
+python .claude/skills/pptx-from-layouts/scripts/edit.py project.pptx --inventory -o inv.json
 
-# 2. Replace
-python .claude/skills/pptx-from-layouts/scripts/edit.py project.pptx \
-    --replace '{"slide":3,"old":"Q1 2025","new":"Q2 2026"}' -o updated.pptx
+# 2. Open inv.json, find the target paragraph, change its "text" field.
+#    Example: inv.json["slide-2"]["shape-3"]["paragraphs"][0]["text"] = "Q2 2026"
+#    Leave every other slide/shape entry as-is (they will be re-applied verbatim).
 
-# 3. Validate
+# 3. Apply
+python .claude/skills/pptx-from-layouts/scripts/edit.py project.pptx --replace inv.json -o updated.pptx
+
+# 4. Validate
 python .claude/skills/pptx-from-layouts/scripts/validate.py updated.pptx
 ```
 

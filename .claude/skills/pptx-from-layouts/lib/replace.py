@@ -42,43 +42,55 @@ def clear_paragraph_bullets(paragraph):
 
 
 def apply_paragraph_properties(paragraph, para_data: Dict[str, Any]):
-    """Apply formatting properties to a paragraph."""
+    """Apply formatting properties to a paragraph.
+
+    Only touches bullet/indent XML when the inventory explicitly sets the
+    `bullet` key. Template-inherited bullets (from the slide layout or master)
+    don't appear on the paragraph's own pPr and aren't captured by the
+    inventory; clearing them unconditionally would strip formatting that the
+    caller didn't ask to change.
+    """
     # Get the text but don't set it on paragraph directly yet
     text = para_data.get("text", "")
 
-    # Get or create paragraph properties
-    pPr = clear_paragraph_bullets(paragraph)
+    # Apply indent level whenever inventory specifies it. Some templates key
+    # their bullet chars off pPr.lvl in the layout master's lstStyle, so the
+    # level must be re-applied to keep those inherited bullets on round-trip.
+    if "level" in para_data:
+        paragraph.level = para_data["level"]
 
-    # Handle bullet formatting
-    if para_data.get("bullet", False):
-        level = para_data.get("level", 0)
-        paragraph.level = level
+    # Only manipulate bullet XML when the inventory explicitly says so.
+    if "bullet" in para_data:
+        pPr = clear_paragraph_bullets(paragraph)
+        if para_data["bullet"]:
+            level = para_data.get("level", 0)
+            paragraph.level = level
 
-        # Calculate font-proportional indentation
-        font_size = para_data.get("font_size", 18.0)
-        level_indent_emu = int((font_size * (1.6 + level * 1.6)) * 12700)
-        hanging_indent_emu = int(-font_size * 0.8 * 12700)
+            # Calculate font-proportional indentation
+            font_size = para_data.get("font_size", 18.0)
+            level_indent_emu = int((font_size * (1.6 + level * 1.6)) * 12700)
+            hanging_indent_emu = int(-font_size * 0.8 * 12700)
 
-        # Set indentation
-        pPr.attrib["marL"] = str(level_indent_emu)
-        pPr.attrib["indent"] = str(hanging_indent_emu)
+            # Set indentation
+            pPr.attrib["marL"] = str(level_indent_emu)
+            pPr.attrib["indent"] = str(hanging_indent_emu)
 
-        # Add bullet character
-        buChar = OxmlElement("a:buChar")  # noqa: internal-api
-        buChar.set("char", "•")
-        pPr.append(buChar)
+            # Add bullet character
+            buChar = OxmlElement("a:buChar")  # noqa: internal-api
+            buChar.set("char", "•")
+            pPr.append(buChar)
 
-        # Default to left alignment for bullets if not specified
-        if "alignment" not in para_data:
-            paragraph.alignment = PP_ALIGN.LEFT
-    else:
-        # Remove indentation for non-bullet text
-        pPr.attrib["marL"] = "0"
-        pPr.attrib["indent"] = "0"
+            # Default to left alignment for bullets if not specified
+            if "alignment" not in para_data:
+                paragraph.alignment = PP_ALIGN.LEFT
+        else:
+            # Explicit bullet: false — remove indentation and suppress bullet
+            pPr.attrib["marL"] = "0"
+            pPr.attrib["indent"] = "0"
 
-        # Add buNone element
-        buNone = OxmlElement("a:buNone")  # noqa: internal-api
-        pPr.insert(0, buNone)
+            # Add buNone element
+            buNone = OxmlElement("a:buNone")  # noqa: internal-api
+            pPr.insert(0, buNone)
 
     # Apply alignment
     if "alignment" in para_data:
@@ -228,6 +240,16 @@ def apply_replacements(pptx_file: str, json_file: str, output_file: str):
     # Load replacement data with duplicate key detection
     with open(json_file, "r") as f:
         replacements = json.load(f, object_pairs_hook=check_duplicate_keys)
+
+    # Guard against shorthand / wrong-shape JSON: replace.py iterates the full
+    # inventory and clears every text frame; without any slide-N keys to drive
+    # re-population, that would silently empty the deck.
+    if not any(k.startswith("slide-") for k in replacements.keys()):
+        raise ValueError(
+            "Replacements JSON contains no 'slide-N' keys. Expected the inventory "
+            "schema produced by `edit.py --inventory` (e.g. {\"slide-0\": {\"shape-0\": "
+            "{\"paragraphs\": [...]}}}). Aborting to avoid clearing all text."
+        )
 
     # Validate replacements
     errors = validate_replacements(inventory, replacements)

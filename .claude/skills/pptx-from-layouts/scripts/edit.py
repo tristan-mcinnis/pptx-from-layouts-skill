@@ -5,14 +5,12 @@ edit.py: Surgical editing of existing PowerPoint presentations.
 Provides inventory extraction, text replacement, and slide reordering.
 
 Usage:
-    # Extract content inventory
-    python edit.py deck.pptx --inventory
+    # Extract content inventory (this is the schema --replace consumes)
+    python edit.py deck.pptx --inventory -o inv.json
 
-    # Replace text (inline JSON)
-    python edit.py deck.pptx --replace '{"slide":3,"old":"2025","new":"2026"}'
-
-    # Replace text (from file)
-    python edit.py deck.pptx --replace changes.json -o edited.pptx
+    # Apply replacements from an edited inventory-shaped JSON file
+    # (edit inv.json to change the text on the paragraph(s) you want, then pass it back)
+    python edit.py deck.pptx --replace inv.json -o edited.pptx
 
     # Reorder slides
     python edit.py deck.pptx --reorder "0,2,1,3,4" -o reordered.pptx
@@ -28,24 +26,23 @@ from pathlib import Path
 # Resolve paths
 _SCRIPT_DIR = Path(__file__).resolve().parent
 _SKILL_DIR = _SCRIPT_DIR.parent
+_LIB_DIR = _SKILL_DIR / "lib"
 _PROJECT_ROOT = _SKILL_DIR.parents[2]
-_CLAUDE_DIR = _PROJECT_ROOT / ".claude"
-_SCRIPTS_DIR = _CLAUDE_DIR / "scripts"
 
-# Script paths (edit scripts are in .claude/scripts/, not archived)
-INVENTORY_SCRIPT = _SCRIPTS_DIR / "inventory.py"
-REPLACE_SCRIPT = _SCRIPTS_DIR / "replace.py"
-REARRANGE_SCRIPT = _SCRIPTS_DIR / "rearrange.py"
+# Script paths (edit primitives live in the skill's lib/)
+INVENTORY_SCRIPT = _LIB_DIR / "inventory.py"
+REPLACE_SCRIPT = _LIB_DIR / "replace.py"
+REARRANGE_SCRIPT = _LIB_DIR / "rearrange.py"
 
 
 def run_command(cmd: list, description: str) -> tuple[bool, str]:
     """Run a command and return success status and output."""
     try:
-        # Set up environment with .claude in PYTHONPATH
+        # Set up environment with skill directories in PYTHONPATH
         env = os.environ.copy()
         pythonpath = env.get('PYTHONPATH', '')
-        claude_paths = f"{_CLAUDE_DIR}:{_SCRIPTS_DIR}"
-        env['PYTHONPATH'] = f"{claude_paths}:{pythonpath}" if pythonpath else claude_paths
+        skill_paths = f"{_SKILL_DIR}:{_LIB_DIR}:{_SKILL_DIR / 'schemas'}:{_SCRIPT_DIR}"
+        env['PYTHONPATH'] = f"{skill_paths}:{pythonpath}" if pythonpath else skill_paths
 
         result = subprocess.run(
             cmd,
@@ -71,13 +68,12 @@ Examples:
     Extract text content inventory to JSON (stdout)
 
   python edit.py deck.pptx --inventory -o inventory.json
-    Save inventory to file
+    Save inventory to file (this is the schema --replace consumes)
 
-  python edit.py deck.pptx --replace '{"slide":3,"old":"Q1","new":"Q2"}'
-    Replace text inline
-
-  python edit.py deck.pptx --replace changes.json -o edited.pptx
-    Apply replacements from file
+  python edit.py deck.pptx --replace inventory.json -o edited.pptx
+    Apply replacements from an edited inventory-shaped JSON file.
+    Workflow: dump inventory, hand-edit the paragraph "text" fields you want
+    to change, leave every other entry as-is, then pass the file back here.
 
   python edit.py deck.pptx --reorder "0,2,1,3" -o reordered.pptx
     Reorder slides (0-indexed)
@@ -93,7 +89,8 @@ Examples:
     mode_group.add_argument('--inventory', action='store_true',
                             help='Extract content inventory')
     mode_group.add_argument('--replace',
-                            help='Apply text replacements (JSON string or file path)')
+                            help='Apply replacements from an inventory-shaped JSON file '
+                                 '(dump with --inventory, edit paragraph text, pass back)')
     mode_group.add_argument('--reorder',
                             help='Reorder slides (comma-separated 0-indexed positions)')
 

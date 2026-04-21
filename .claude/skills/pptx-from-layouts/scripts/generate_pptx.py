@@ -6104,7 +6104,7 @@ def generate_presentation(
     _degradation_ctx = None
 
     result = GenerationResult(
-        success=(slides_failed == 0 and slides_skipped == 0),
+        success=(slides_failed == 0),
         output_path=output_path,
         slides_total=len(slides_data),
         slides_succeeded=slides_succeeded,

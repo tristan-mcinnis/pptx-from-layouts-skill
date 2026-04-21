@@ -41,8 +41,8 @@ GENERATE_SCRIPT = _SCRIPT_DIR / "generate_pptx.py"
 VALIDATE_SCRIPT = _SCRIPT_DIR / "quality_check.py"
 
 # Default template and config (project level)
-DEFAULT_TEMPLATE = _PROJECT_ROOT / "template" / "inner-chapter.pptx"
-DEFAULT_CONFIG = _PROJECT_ROOT / "template" / "inner-chapter-config.json"
+DEFAULT_TEMPLATE = _PROJECT_ROOT / "templates" / "inner-chapter.pptx"
+DEFAULT_CONFIG = _PROJECT_ROOT / "templates" / "inner-chapter-config.json"
 
 
 def run_command(cmd: list, description: str) -> tuple[bool, str]:

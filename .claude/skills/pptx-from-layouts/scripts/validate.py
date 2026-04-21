@@ -27,27 +27,25 @@ from pathlib import Path
 # Resolve paths
 _SCRIPT_DIR = Path(__file__).resolve().parent
 _SKILL_DIR = _SCRIPT_DIR.parent
-_ARCHIVE_DIR = _SKILL_DIR.parent / "_archive"
 _PROJECT_ROOT = _SKILL_DIR.parents[2]
-_CLAUDE_DIR = _PROJECT_ROOT / ".claude"
 
-# Archived script paths
-QUALITY_CHECK_SCRIPT = _ARCHIVE_DIR / "slide-validator" / "scripts" / "quality_check.py"
-VALIDATE_PPTX_SCRIPT = _ARCHIVE_DIR / "slide-validator" / "scripts" / "validate_pptx.py"
-DIFF_PPTX_SCRIPT = _ARCHIVE_DIR / "slide-validator" / "scripts" / "diff_pptx.py"
+# Sibling script paths (all live alongside this file)
+QUALITY_CHECK_SCRIPT = _SCRIPT_DIR / "quality_check.py"
+VALIDATE_PPTX_SCRIPT = _SCRIPT_DIR / "validate_pptx.py"
+DIFF_PPTX_SCRIPT = _SCRIPT_DIR / "diff_pptx.py"
 
 # Default template
-DEFAULT_TEMPLATE = _PROJECT_ROOT / "template" / "inner-chapter.pptx"
+DEFAULT_TEMPLATE = _PROJECT_ROOT / "templates" / "inner-chapter.pptx"
 
 
 def run_command(cmd: list, description: str) -> tuple[bool, str]:
     """Run a command and return success status and output."""
     try:
-        # Set up environment with .claude in PYTHONPATH
+        # Set up environment with skill directories in PYTHONPATH
         env = os.environ.copy()
         pythonpath = env.get('PYTHONPATH', '')
-        claude_paths = f"{_CLAUDE_DIR}:{_CLAUDE_DIR / 'scripts'}"
-        env['PYTHONPATH'] = f"{claude_paths}:{pythonpath}" if pythonpath else claude_paths
+        skill_paths = f"{_SKILL_DIR}:{_SKILL_DIR / 'lib'}:{_SKILL_DIR / 'schemas'}:{_SCRIPT_DIR}"
+        env['PYTHONPATH'] = f"{skill_paths}:{pythonpath}" if pythonpath else skill_paths
 
         result = subprocess.run(
             cmd,

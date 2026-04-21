@@ -48,3 +48,6 @@ Thumbs.db
 *.pptx.bak
 workspace/
 test-output.pptx
+
+# OMC session state (per-developer, not shared)
+.omc/
