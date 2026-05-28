@@ -1,136 +1,154 @@
 ---
 name: pptx-from-layouts
-description: Generate and edit PowerPoint presentations from templates. Use when user needs to create slides from outlines, modify existing decks, profile custom templates, or validate presentation quality.
+description: >-
+  Generate and edit consultant-grade PowerPoint decks from markdown outlines
+  using a template's real slide-master layouts (not text overlays). Use when
+  the user wants to create slides/a deck/a presentation from an outline or
+  brief, modify an existing .pptx, turn their own PowerPoint into a reusable
+  template, or check a deck's quality. Triggers: "make a deck", "build a
+  presentation", "slides for…", "use my company template", "fix slide N".
 ---
 
-# PPTX Presentation System
+# PPTX from Layouts
 
-Generate consultant-ready PowerPoint presentations from markdown outlines.
+Generate consultant-ready PowerPoint presentations from markdown outlines by
+filling the template's actual slide-master layouts. **Core thesis: use the
+template's layouts and placeholders — never overlay text boxes on slides.**
+
+## Dependencies (check first)
+
+Requires **Python 3.10+**, **python-pptx**, and **pydantic**:
+
+```bash
+pip install python-pptx pydantic     # or: pip install -r requirements.txt
+```
+
+If you hit `ModuleNotFoundError: No module named 'pptx'` or `'pydantic'`, this
+is why. The entry-point scripts set their own `PYTHONPATH`; run them directly
+with `python`.
+
+## Decision: which path am I on?
+
+| The user wants… | Do this |
+|-----------------|---------|
+| A deck from a brief / notes / source doc (no outline yet) | Delegate to **`pptx-outline-architect`**, then generate |
+| A deck and they already wrote an outline | `generate.py` → validate |
+| To use **their own** PowerPoint as the template | Delegate to **`pptx-template-onboarder`** (one-time setup) |
+| Small text fixes / reorder on an existing deck (<30% slides) | `edit.py` (inventory → replace / reorder) |
+| Layout changes, added/removed slides, or >30% churn | Regenerate via `generate.py` — **never** edit |
+| To know if a deck is good | Delegate to **`pptx-deck-qa`** or run `validate.py` |
+
+## Mandatory generation workflow (do not skip steps)
+
+1. **Pick or confirm the template.** First time with a custom template? Onboard
+   it once (see *Bring your own template* below). Otherwise the bundled Inner
+   Chapter template is the default.
+2. **Produce an outline** with a `**Visual: <type>**` declaration on EVERY
+   content slide. Choose visual types with the decision order below — do not
+   default everything to bullets.
+3. **Generate:**
+   ```bash
+   python scripts/generate.py outline.md -o deck.pptx --validate
+   ```
+   (Add `--template <t.pptx> --config <c.json>` for a custom template.)
+4. **Validate and read the report.** A deck is not done until validation is
+   clean of errors and text overflow. If it isn't, fix and re-run.
+5. **Report the score and the output path** to the user.
+
+### Definition of done (self-check before claiming success)
+
+- [ ] Every content slide had an explicit `**Visual:**` declaration.
+- [ ] `generate.py` exited successfully and the `.pptx` exists.
+- [ ] `validate.py` reports **zero errors** and **no text overflow**.
+- [ ] No anti-pattern below was used (hero-statement for lists, tables for
+      process flows, bullets for comparisons, …).
+- [ ] You reported the validation score and file path, not just "done".
+
+If any box is unchecked, the task is not finished — fix it or say explicitly
+what blocked you.
+
+## Subagents
+
+Canonical definitions in `agents/`; install to `~/.claude/agents/` to use them.
+
+| Subagent | Use it to |
+|----------|-----------|
+| `pptx-outline-architect` | Turn raw material into a generation-ready `outline.md` with correct visual types |
+| `pptx-template-onboarder` | Onboard a user's `.pptx` as a reusable, on-brand template (one-time) |
+| `pptx-deck-qa` | Validate a deck and apply a surgical fix or recommend regeneration |
+
+They chain as **architect → `generate.py` → QA**; for your own template,
+**onboarder** runs once up front. (Full write-up: `docs/workflows.md` in the repo.)
 
 ## Quick Start
 
 ```bash
-# Generate from outline (Inner Chapter template)
-python .claude/skills/pptx-from-layouts/scripts/generate.py outline.md -o deck.pptx
+# Generate from outline (bundled Inner Chapter template, with validation)
+python scripts/generate.py outline.md -o deck.pptx --validate
+
+# Use your own template
+python scripts/generate.py outline.md -o deck.pptx \
+    --template your-template.pptx --config your-template-config.json --validate
 
 # Edit existing deck (dump inventory, edit its JSON, apply as a file)
-python .claude/skills/pptx-from-layouts/scripts/edit.py deck.pptx --inventory -o inv.json
+python scripts/edit.py deck.pptx --inventory -o inv.json
 #   edit inv.json: change the text on the paragraph(s) you care about
-python .claude/skills/pptx-from-layouts/scripts/edit.py deck.pptx --replace inv.json -o edited.pptx
+python scripts/edit.py deck.pptx --replace inv.json -o edited.pptx
 
 # Validate quality
-python .claude/skills/pptx-from-layouts/scripts/validate.py deck.pptx
+python scripts/validate.py deck.pptx
 
-# Profile custom template
-python .claude/skills/pptx-from-layouts/scripts/profile.py template.pptx --generate-config
+# Profile a custom template (one-time onboarding)
+python scripts/profile.py template.pptx --name my-template --generate-config
 ```
 
-## Core Workflow
+## Bring your own template (one-time, then automate forever)
 
-### Generate (outline → PPTX)
-
-1. Create outline with visual type declarations
-2. Run generate command
-3. Validate output
+The bundled template is only a demo. To make on-brand decks, onboard your own
+`.pptx` **once** — profile it, generate its layout-mapping config, smoke-test,
+and reuse it for every future deck.
 
 ```bash
-# Basic generation
-python .claude/skills/pptx-from-layouts/scripts/generate.py outline.md -o output.pptx
-
-# With validation
-python .claude/skills/pptx-from-layouts/scripts/generate.py outline.md -o output.pptx --validate
-
-# Custom template
-python .claude/skills/pptx-from-layouts/scripts/generate.py outline.md -o output.pptx \
-    --config custom-config.json --template custom-template.pptx
-
-# Parse only (no PPTX)
-python .claude/skills/pptx-from-layouts/scripts/generate.py outline.md --layout-only -o layout.json
+python scripts/profile.py /path/to/your-template.pptx \
+    --name your-template --generate-config --output-dir templates/
 ```
 
-### Edit (surgical changes)
-
-Use for text-only changes to < 30% of slides.
-
-```bash
-# Extract content inventory (this is the schema replace.py consumes)
-python .claude/skills/pptx-from-layouts/scripts/edit.py deck.pptx --inventory -o inv.json
-
-# Apply replacements (pass an edited inventory-shaped JSON file)
-# Edit inv.json: find the slide-N/shape-N/paragraphs[i].text you want to change,
-# leave everything else as-is, then pass the file back:
-python .claude/skills/pptx-from-layouts/scripts/edit.py deck.pptx --replace inv.json -o edited.pptx
-
-# Reorder slides (0-indexed)
-python .claude/skills/pptx-from-layouts/scripts/edit.py deck.pptx --reorder "0,2,1,3,4" -o reordered.pptx
-```
-
-### Validate
-
-```bash
-# Basic quality check
-python .claude/skills/pptx-from-layouts/scripts/validate.py deck.pptx
-
-# With layout coverage analysis
-python .claude/skills/pptx-from-layouts/scripts/validate.py deck.pptx --template template.pptx
-
-# Compare to reference
-python .claude/skills/pptx-from-layouts/scripts/validate.py deck.pptx --reference expected.pptx
-
-# Generate diff report
-python .claude/skills/pptx-from-layouts/scripts/validate.py deck.pptx --diff other.pptx -o diff.md
-```
-
-### Profile (custom templates)
-
-```bash
-# Profile and generate config
-python .claude/skills/pptx-from-layouts/scripts/profile.py template.pptx --generate-config
-
-# Specify output location
-python .claude/skills/pptx-from-layouts/scripts/profile.py template.pptx \
-    --name my-template --output-dir ./configs/
-```
+This emits `your-template-config.json`. After that, every deck is a single
+`generate.py` call with `--template`/`--config`. Full guide:
+`rules/bring-your-own-template.md`. To automate the whole thing, delegate to
+`pptx-template-onboarder`.
 
 ## Visual Types
 
-Declare visual types in outlines with `**Visual: type-name**`.
+Declare in outlines with `**Visual: type-name**`.
 
 | Type | Use When |
 |------|----------|
 | `process-N-phase` | Sequential steps (N=2-5) |
 | `comparison-N` | Side-by-side options (N=2-5) |
-| `cards-N` | Non-sequential items (N=2-5) |
+| `cards-N` | Non-sequential parallel items (N=2-5) |
 | `data-contrast` | Two opposing metrics |
 | `quote-hero` | Powerful quote |
-| `hero-statement` | Single punchy statement |
+| `hero-statement` | Single punchy statement ONLY |
 | `timeline-horizontal` | Date-based sequences |
 | `table` | Genuinely tabular data |
-| `bullets` | Default (3+ items) |
+| `bullets` | Default (3+ items) — last resort |
 
-**Decision order:** sequence → comparison → parallel items → data contrast → quote → table → hero → bullets
+**Decision order:** sequence → comparison → parallel items → data contrast →
+quote → table → hero → bullets. Full reference + per-type length limits:
+`rules/visual-types.md`.
 
 ## Typography Markers
 
-### Inline
+| Inline | Result | | Paragraph | Result |
+|--------|--------|-|-----------|--------|
+| `{blue}text{/blue}` | IC brand blue | | `{bullet:-}` | Dash bullet (–) |
+| `{bold}text{/bold}` | Bold | | `{bullet:1}` | Numbered |
+| `{italic}text{/italic}` | Italic | | `{level:N}` | Indent level |
+| `{question}text?{/question}` | Blue italic | | | |
+| `{signpost}LABEL{/signpost}` | Section label | | | |
 
-| Marker | Result |
-|--------|--------|
-| `{blue}text{/blue}` | IC brand blue |
-| `{bold}text{/bold}` | Bold |
-| `{italic}text{/italic}` | Italic |
-| `{question}text?{/question}` | Blue italic |
-| `{signpost}LABEL{/signpost}` | Section label |
-
-### Paragraph
-
-| Marker | Result |
-|--------|--------|
-| `{bullet:-}` | Dash bullet (–) |
-| `{bullet:1}` | Numbered |
-| `{level:N}` | Indent level |
-
-## Example: Full Generation
+## Example outline
 
 ```markdown
 # Project Overview
@@ -148,38 +166,26 @@ Transforming operations through digital innovation
 [Column 2: Define]
 - Workshop facilitation
 - Strategic framework
-[Image: workshop]
 
 [Column 3: Design]
 - Solution architecture
 - Prototype development
-[Image: design work]
 
 [Column 4: Deliver]
 - Implementation
 - Training & handover
-[Image: delivery]
 ```
 
-```bash
-python .claude/skills/pptx-from-layouts/scripts/generate.py outline.md -o project.pptx --validate
-```
-
-## Example: Edit Workflow
+## Edit workflow
 
 ```bash
 # 1. Dump the inventory — this is the schema replace.py consumes
-python .claude/skills/pptx-from-layouts/scripts/edit.py project.pptx --inventory -o inv.json
-
-# 2. Open inv.json, find the target paragraph, change its "text" field.
-#    Example: inv.json["slide-2"]["shape-3"]["paragraphs"][0]["text"] = "Q2 2026"
-#    Leave every other slide/shape entry as-is (they will be re-applied verbatim).
-
-# 3. Apply
-python .claude/skills/pptx-from-layouts/scripts/edit.py project.pptx --replace inv.json -o updated.pptx
-
-# 4. Validate
-python .claude/skills/pptx-from-layouts/scripts/validate.py updated.pptx
+python scripts/edit.py project.pptx --inventory -o inv.json
+# 2. Open inv.json, find the target paragraph, change only its "text" field.
+#    e.g. inv.json["slide-2"]["shape-3"]["paragraphs"][0]["text"] = "Q2 2026"
+# 3. Apply, then validate
+python scripts/edit.py project.pptx --replace inv.json -o updated.pptx
+python scripts/validate.py updated.pptx
 ```
 
 ## Mode Decision
@@ -193,34 +199,23 @@ python .claude/skills/pptx-from-layouts/scripts/validate.py updated.pptx
 | Add/remove slides | Regenerate |
 | > 30% slide changes | Regenerate |
 
-## Anti-Patterns
+## Anti-Patterns (FORBIDDEN)
 
-- DON'T use edit mode for layout changes (regenerate instead)
-- DON'T skip visual type decisions (bullets are boring)
-- DON'T edit > 30% of slides (regenerate instead)
-- DON'T forget validation step
-- DON'T use `hero-statement` for content with 3+ items
-- DON'T use tables for methodology/process flows
-- DON'T use bullet lists for side-by-side comparisons
-
-## Files
-
-| Path | Purpose |
-|------|---------|
-| `template/inner-chapter.pptx` | Default IC template |
-| `template/inner-chapter-config.json` | IC template config |
-| `.claude/schemas/layout_plan.py` | Layout plan schema |
+- DON'T skip the `**Visual:**` declaration — the parser default may not match.
+- DON'T default to bullets when a richer visual type fits — bullets are the
+  last resort, not the reflex.
+- DON'T use `hero-statement` for 3+ items or multi-sentence content.
+- DON'T use tables for methodology/process flows (use `process-N-phase`).
+- DON'T use bullet lists for side-by-side comparisons (use `comparison-N`).
+- DON'T use edit mode for layout changes or to add/remove slides — regenerate.
+- DON'T edit > 30% of slides — regenerate instead.
+- DON'T claim success without a clean validation pass.
 
 ## See Also
 
-Detailed rules in `rules/`:
-- `outline-format.md` - Markdown outline syntax
-- `visual-types.md` - Visual type selection
-- `typography.md` - Text formatting markers
-- `columns.md` - Column/card structures
-- `tables.md` - Table patterns
-- `editing.md` - Edit vs regenerate
-- `decisions.md` - Quick reference
+Author-facing rules in `rules/`:
+`outline-format.md`, `visual-types.md`, `typography.md`, `columns.md`,
+`tables.md`, `editing.md`, `bring-your-own-template.md`, `decisions.md`.
 
-Reference files in `references/`:
-- `layouts.md` - Inner Chapter template layout indices
+Reference: `references/layouts.md` (Inner Chapter layout indices).
+Subagents: `agents/` (this skill). Workflows write-up: `docs/workflows.md` (repo).

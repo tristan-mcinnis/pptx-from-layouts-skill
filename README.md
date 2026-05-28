@@ -36,18 +36,24 @@ setup:
    folder directly.
 2. Copy that folder to ~/.claude/skills/pptx-from-layouts/ (create the parent if
    needed). Confirm `~/.claude/skills/pptx-from-layouts/SKILL.md` exists.
-3. Install the one Python dep: `pip install python-pptx` (Python 3.10+).
-4. Ask me which PowerPoint template I want to use as the default. If I give you
-   one, copy it to ~/.claude/skills/pptx-from-layouts/templates/default.pptx
-   and run
+3. Copy the three bundled subagents so they're usable:
+     mkdir -p ~/.claude/agents
+     cp ~/.claude/skills/pptx-from-layouts/agents/*.md ~/.claude/agents/
+4. Install the two Python deps (Python 3.10+):
+     pip install python-pptx pydantic
+5. Ask me which PowerPoint template I want to use as the default. If I give you
+   one, copy it to ~/.claude/skills/pptx-from-layouts/templates/default.pptx and
+   onboard it (delegate to the pptx-template-onboarder subagent, or run):
      python ~/.claude/skills/pptx-from-layouts/scripts/profile.py \
-       ~/.claude/skills/pptx-from-layouts/templates/default.pptx --generate-config
+       ~/.claude/skills/pptx-from-layouts/templates/default.pptx \
+       --name default --generate-config \
+       --output-dir ~/.claude/skills/pptx-from-layouts/templates/
    to emit the matching config JSON alongside it. If I don't have one, use the
    bundled Inner Chapter template shipped in templates/.
-5. Smoke test: generate the canonical example with my new default template and
+6. Smoke test: generate the canonical example with my new default template and
    open it so I can eyeball it.
-6. Tell me the three commands I'll actually use day-to-day (generate, edit, validate)
-   with my template path baked in.
+7. Tell me the three commands I'll actually use day-to-day (generate, edit,
+   validate) with my template path baked in.
 ```
 
 ### Or install it manually
@@ -61,8 +67,12 @@ cd pptx-from-layouts-skill
 mkdir -p ~/.claude/skills
 cp -r .claude/skills/pptx-from-layouts ~/.claude/skills/
 
-# 3. Install the one Python dependency
-pip install python-pptx
+# 3. Copy the bundled subagents so Claude Code can delegate to them
+mkdir -p ~/.claude/agents
+cp ~/.claude/skills/pptx-from-layouts/agents/*.md ~/.claude/agents/
+
+# 4. Install the Python dependencies (Python 3.10+)
+pip install python-pptx pydantic   # or: pip install -r requirements.txt
 ```
 
 ### Generate a Presentation
@@ -72,12 +82,29 @@ python ~/.claude/skills/pptx-from-layouts/scripts/generate.py \
   outline.md -o presentation.pptx --template your-template.pptx
 ```
 
-### Profile a New Template
+### Use Your Own Template (do this once, automate forever)
+
+The bundled Inner Chapter template is only a demo. To make on-brand decks,
+**onboard your own `.pptx` once** — the skill profiles its slide-master
+layouts, writes a layout-mapping config, and reuses it for every future deck:
 
 ```bash
 python ~/.claude/skills/pptx-from-layouts/scripts/profile.py \
-  corporate-template.pptx --generate-config
+  your-template.pptx --name your-template --generate-config \
+  --output-dir ~/.claude/skills/pptx-from-layouts/templates/
 ```
+
+That emits `your-template-config.json`. From then on every deck is one command:
+
+```bash
+python ~/.claude/skills/pptx-from-layouts/scripts/generate.py outline.md -o deck.pptx \
+  --template your-template.pptx \
+  --config ~/.claude/skills/pptx-from-layouts/templates/your-template-config.json --validate
+```
+
+The easiest way to do all of this is to let the **`pptx-template-onboarder`**
+subagent handle it — it profiles, audits, smoke-tests, and tells you the exact
+commands to use. Full guide: [Bring Your Own Template →](.claude/skills/pptx-from-layouts/rules/bring-your-own-template.md).
 
 ## Outline Format
 
@@ -138,6 +165,7 @@ Transforming operations through digital innovation
 - **Template Profiling** — Works with any well-designed PPTX template
 - **Edit Mode** — Surgical changes to existing decks
 - **Validation** — Built-in quality checks
+- **Subagents** — `pptx-outline-architect`, `pptx-template-onboarder`, and `pptx-deck-qa` for delegated authoring, template onboarding, and QA
 
 ## Workflows
 
@@ -147,6 +175,22 @@ Transforming operations through digital innovation
 | Use corporate template | `profile.py template.pptx` then generate |
 | Fix typos in existing deck | `edit.py deck.pptx --inventory -o inv.json` → edit `paragraphs[i].text` → `edit.py deck.pptx --replace inv.json` |
 | Reorder slides | `edit.py deck.pptx --reorder "0,2,1,3,4"` |
+
+## Subagents
+
+The skill ships three subagents (in `.claude/skills/pptx-from-layouts/agents/`,
+copy to `~/.claude/agents/` to use) so an orchestrating agent can delegate
+focused work:
+
+| Subagent | Job |
+|----------|-----|
+| `pptx-outline-architect` | Raw brief/notes/doc → generation-ready `outline.md` with the right visual types |
+| `pptx-template-onboarder` | Your `.pptx` → profiled, config'd, smoke-tested, reusable template (one-time) |
+| `pptx-deck-qa` | A deck → validation verdict + surgical fix or regenerate recommendation |
+
+Typical chain: **architect → `generate.py` → QA**. For your own template,
+**onboarder** runs once up front. See
+[Workflows & Subagents →](docs/workflows.md).
 
 ## Mode Decision
 
@@ -191,8 +235,8 @@ See [detailed analysis →](docs/comparison.md)
 ## Requirements
 
 - Python 3.10+
-- python-pptx (`pip install python-pptx`)
-- Claude Code (for skill integration)
+- python-pptx and pydantic (`pip install python-pptx pydantic`, or `pip install -r requirements.txt`)
+- Claude Code (for skill + subagent integration)
 
 ## License
 

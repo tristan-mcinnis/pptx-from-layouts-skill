@@ -1,0 +1,135 @@
+{
+  "template_name": "inner-chapter",
+  "template_path": "template/inner-chapter.pptx",
+  "brand": {
+    "primary_color": "0196FF",
+    "secondary_color": "000000",
+    "accent_color": "595959",
+    "header_font": "Aptos",
+    "body_font": "Aptos"
+  },
+  "layout_mappings": {
+    "master_base": {
+      "layout_index": 58,
+      "layout_name": "master-base",
+      "use_case": "Branding slide (always Slide 1)"
+    },
+    "title_cover": {
+      "layout_index": 0,
+      "layout_name": "title-cover",
+      "use_case": "Cover page with client, date, logos"
+    },
+    "title_centered": {
+      "layout_index": 2,
+      "layout_name": "title-centered",
+      "use_case": "Section dividers, closing statements"
+    },
+    "content_with_image": {
+      "layout_index": 3,
+      "layout_name": "content-image-right-a",
+      "use_case": "Bullets with image placeholder"
+    },
+    "content_centered": {
+      "layout_index": 45,
+      "layout_name": "content-centered-a",
+      "use_case": "Centered content without image"
+    },
+    "story_card": {
+      "layout_index": 8,
+      "layout_name": "content-image-right-text-left",
+      "use_case": "Story card with image right, text left"
+    },
+    "column_2": {
+      "layout_index": 6,
+      "layout_name": "column-2-centered",
+      "use_case": "2-column comparisons"
+    },
+    "column_3": {
+      "layout_index": 35,
+      "layout_name": "column-3-centered-a",
+      "use_case": "3-column comparisons"
+    },
+    "column_4": {
+      "layout_index": 31,
+      "layout_name": "column-4-centered",
+      "use_case": "4-column framework/flow diagrams"
+    },
+    "column_5": {
+      "layout_index": 27,
+      "layout_name": "column-5-centered",
+      "use_case": "5-column cards/comparisons"
+    },
+    "contact": {
+      "layout_index": 52,
+      "layout_name": "contact-black",
+      "use_case": "Contact information (dark)"
+    },
+    "contact_white": {
+      "layout_index": 51,
+      "layout_name": "contact-white",
+      "use_case": "Contact information (light)"
+    },
+    "grid_3x2_3body": {
+      "layout_index": 36,
+      "layout_name": "grid-3x2-image-top-3-body",
+      "use_case": "3 columns with images top, 3 body areas"
+    },
+    "grid_3x2_6body": {
+      "layout_index": 37,
+      "layout_name": "grid-3x2-image-top-6-body-a",
+      "use_case": "3 columns with images top, 6 body areas"
+    },
+    "grid_2x2_2body": {
+      "layout_index": 42,
+      "layout_name": "grid-2x2-image-top-2-body-a",
+      "use_case": "2 columns with images top, 2 body areas"
+    },
+    "grid_2x2_2body_b": {
+      "layout_index": 44,
+      "layout_name": "grid-2x2-image-top-2-body-b",
+      "use_case": "2 columns with images top, 2 body areas (variant B)"
+    },
+    "content_image_top_4body": {
+      "layout_index": 32,
+      "layout_name": "content-image-top-4-body",
+      "use_case": "4 columns with images top"
+    },
+    "fallback": {
+      "layout_index": 45,
+      "layout_name": "content-centered-a",
+      "use_case": "Fallback for unknown content types"
+    }
+  },
+  "content_type_routing": {
+    "title_slide": "title_cover",
+    "section_divider": "title_centered",
+    "closing": "title_centered",
+    "thank_you": "title_centered",
+    "quote": "title_centered",
+    "contact": "contact",
+    "framework_2col": "column_2",
+    "framework_3col": "column_3",
+    "framework_4col": "column_4",
+    "framework_5col": "column_5",
+    "framework_cards": "column_4",
+    "comparison": "column_2",
+    "content": "content_with_image",
+    "deliverables": "content_with_image",
+    "timeline": "content_with_image",
+    "content_no_image": "content_centered",
+    "table": "title_centered",
+    "pricing": "title_centered",
+    "comparison_tables": "title_centered",
+    "table_with_image": "content_with_image",
+    "story_card": "story_card",
+    "grid_3x2_3body": "grid_3x2_3body",
+    "grid_3x2_6body": "grid_3x2_6body",
+    "grid_2x2_2body": "grid_2x2_2body",
+    "grid_2x2_2body_b": "grid_2x2_2body_b",
+    "content_image_top_4body": "content_image_top_4body"
+  },
+  "requires_branding_slide": true,
+  "branding_layout_index": 58,
+  "fallback_layout_index": 45,
+  "fallback_layout_name": "content-centered-a"
+}

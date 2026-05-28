@@ -6,7 +6,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 This repo is the distribution for a single Claude Code **skill**, `pptx-from-layouts`, that generates consultant-grade PowerPoint decks from markdown outlines. The skill itself lives at `.claude/skills/pptx-from-layouts/`; everything else (`docs/`, `examples/`, `templates/`, `alternatives/`) is supporting material.
 
-Installation is just a copy: `cp -r .claude/skills/pptx-from-layouts ~/.claude/skills/`. There is no package to build, no test suite, no lockfile — dependencies are `Python 3.10+` and `pip install python-pptx` only.
+Installation is just a copy: `cp -r .claude/skills/pptx-from-layouts ~/.claude/skills/`. There is no package to build, no test suite, no lockfile — dependencies are `Python 3.10+` plus `pip install python-pptx pydantic` (also in `requirements.txt`). **python-pptx alone is not enough**: the `schemas/` package imports pydantic, so generation fails with `ModuleNotFoundError: No module named 'pydantic'` without it.
+
+The skill also ships three subagents in `.claude/skills/pptx-from-layouts/agents/` (`pptx-outline-architect`, `pptx-template-onboarder`, `pptx-deck-qa`). Copies are mirrored in this repo's `.claude/agents/` so they're active during skill development; installers copy them to `~/.claude/agents/`. Keep the two copies in sync when editing.
 
 ## Commands
 
@@ -37,14 +39,14 @@ python .claude/skills/pptx-from-layouts/scripts/validate.py deck.pptx --diff oth
 python .claude/skills/pptx-from-layouts/scripts/profile.py template.pptx --generate-config
 ```
 
-### Template path gotcha
+### Default template + config
 
-`generate.py` defaults to `<project-root>/template/inner-chapter.pptx` (singular), but in this repo the template is shipped under `templates/` (plural) at `templates/inner-chapter.pptx`, and there is no bundled `inner-chapter-config.json`. When running from this repo, pass the template explicitly:
+`generate.py` resolves its defaults to `<project-root>/templates/inner-chapter.pptx` and `<project-root>/templates/inner-chapter-config.json` (both bundled), so from this repo root a bare `generate.py outline.md -o out.pptx` works with zero `--template`/`--config` flags. The config is committed (generated via `generate_config.py --generate-ic-defaults`) and doubles as the reference example of a well-formed template config.
 
 ```bash
+# Works with no flags from the repo root:
 python .claude/skills/pptx-from-layouts/scripts/generate.py \
-    examples/q1-strategy/outline.md -o out.pptx \
-    --template templates/inner-chapter.pptx
+    examples/q1-strategy/outline.md -o out.pptx
 ```
 
 The example in `examples/q1-strategy/` is the canonical smoke test — regenerate it and diff against `examples/q1-strategy/output.pptx` to verify changes.
@@ -87,9 +89,11 @@ Template profiling is a separate offline step: `profile_template.py` walks a `.p
 │   ├── graceful_degradation.py  performance.py  confidence.py  thumbnail.py
 ├── schemas/                    # Pydantic models (layout_plan, template_config,
 │   │                             brand_config, checklist, generation_result, …)
+├── agents/                     # Shipped subagent definitions (mirror of repo .claude/agents/)
+│   └── pptx-outline-architect.md  pptx-template-onboarder.md  pptx-deck-qa.md
 ├── rules/                      # Prose guidance consumed by LLMs writing outlines
-│   └── visual-types.md  outline-format.md  typography.md
-│       columns.md  tables.md  editing.md  decisions.md
+│   └── visual-types.md  outline-format.md  typography.md  columns.md
+│       tables.md  editing.md  bring-your-own-template.md  decisions.md
 └── references/layouts.md       # Inner Chapter template layout-index catalog (59 layouts)
 ```
 
@@ -104,6 +108,8 @@ alternatives/                   # 7 preserved competing skills (comparison artif
 docs/architecture.md            # Deeper internals writeup
 docs/visual-types.md            # Visual-type decision tree + content-length limits
 docs/comparison.md              # Why slide-master approach beats inventory/replace
+docs/workflows.md               # End-to-end workflows + how the 3 subagents chain
+.claude/agents/                 # Active subagents for this repo (mirror of skill agents/)
 ```
 
 ### Visual types are the API
