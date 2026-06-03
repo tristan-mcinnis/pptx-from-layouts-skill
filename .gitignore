@@ -51,3 +51,6 @@ test-output.pptx
 
 # OMC session state (per-developer, not shared)
 .omc/
+
+# Local tracking
+status.md
