@@ -9,11 +9,56 @@ description: >-
   presentation", "slides for…", "use my company template", "fix slide N".
 ---
 
-# PPTX from Layouts
+# PPTX from Layouts — Step 3: Render
 
 Generate consultant-ready PowerPoint presentations from markdown outlines by
 filling the template's actual slide-master layouts. **Core thesis: use the
 template's layouts and placeholders — never overlay text boxes on slides.**
+
+## The 3-step pipeline
+
+This skill is **Step 3** of a three-skill pipeline. Each step is its own skill:
+
+```text
+  STEP 1 — PROFILE          STEP 2 — AUTHOR           STEP 3 — RENDER  ◀ you are here
+  pptx-profile              pptx-author               pptx-from-layouts
+  ───────────────           ───────────────           ─────────────────
+  your-template.pptx        slides.md (+ [HINT:])     slides.md + config
+        │                         │                         │
+        ▼                         ▼                         ▼
+   catalog.py  ──catalog.md──▶  write & lint  ──slides──▶  generate.py ─▶ deck.pptx
+        └────────────────── config.json ───────────────────▲   (validated)
+  "what layouts do I        "write slides that        "fill the template's
+   have?"                    name real layouts"        actual placeholders"
+```
+
+- **Step 1 — `pptx-profile`:** `catalog.py` turns a `.pptx` into a layout catalog
+  (the menu of `[HINT:]` names) + a render `config.json`. One-time per template.
+- **Step 2 — `pptx-author`:** write `slides.md` with `[HINT: layout_name]` per
+  slide, then `lint_hints.py` validates the hints against the catalog.
+- **Step 3 — this skill:** `generate.py` fills the named layouts and validates.
+
+You can also start here directly with the bundled **Inner Chapter** template (no
+Step 1 needed) — it's the default and the running example throughout this doc.
+
+### `[HINT:]` — author against real layouts
+
+A slide can name the exact template layout it should render on:
+
+```markdown
+# Slide 2: Three outcomes the research must achieve
+
+[HINT: column-3-centered-a]
+
+[Column 1: Level-set] …
+```
+
+`[HINT:]` resolves against the **active** template config (from Step 1), so it
+works for *any* profiled template — not just Inner Chapter. It's equivalent to
+the `**Layout:**` marker, and takes precedence over `**Visual:**`. Use `[HINT:]`
+when you know the layout (precise); use `**Visual:**` when you want the engine to
+auto-pick one for a semantic intent (e.g. `process-4-phase`). Mismatched hints
+fall back to auto-detection with a warning — so lint in Step 2 first.
 
 ## Dependencies (check first)
 

@@ -1,5 +1,35 @@
 # Workflows & Subagents
 
+## The 3-step pipeline (Profile → Author → Render)
+
+The deck-building flow is split into three skills, one per step, so the workflow
+is explicit and you can enter at any stage:
+
+```text
+  STEP 1 — PROFILE          STEP 2 — AUTHOR           STEP 3 — RENDER
+  pptx-profile              pptx-author               pptx-from-layouts
+  ───────────────           ───────────────           ─────────────────
+  your-template.pptx        slides.md (+ [HINT:])     slides.md + config
+        │                         │                         │
+        ▼                         ▼                         ▼
+   catalog.py  ──catalog.md──▶  write & lint  ──slides──▶  generate.py ─▶ deck.pptx
+        └────────────────── config.json ───────────────────▲   (validated)
+```
+
+| Step | Skill | Entry script | Output |
+|------|-------|--------------|--------|
+| 1 · Profile | `pptx-profile` | `scripts/catalog.py template.pptx` | `*-layout-catalog.md` + `*-config.json` |
+| 2 · Author | `pptx-author` | `scripts/lint_hints.py slides.md --config …` | a `[HINT:]`-tagged, lint-clean `slides.md` |
+| 3 · Render | `pptx-from-layouts` | `scripts/generate.py slides.md -o deck.pptx --config …` | a validated `deck.pptx` |
+
+`[HINT: layout_name]` is what ties the steps together — Step 1 enumerates a
+template's real layout names, Step 2 names one per slide, Step 3 fills that exact
+layout. The three **subagents** below automate the work *inside* each step (the
+onboarder wraps Step 1, the architect wraps Step 2, QA follows Step 3). Using the
+bundled Inner Chapter template? You can skip Step 1 and start at Step 2/3.
+
+---
+
 This skill ships three subagents and a small set of end-to-end workflows that
 chain them. The subagents let an orchestrating agent delegate focused work
 (authoring, onboarding, QA) instead of doing everything in one context.

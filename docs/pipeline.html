@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>pptx-from-layouts pipeline</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --c-bg:#f8fafc; --c-canvas:#ffffff; --c-border:#cbd5e1; --c-border-strong:#94a3b8;
+    --c-text-main:#0f172a; --c-text-sub:#64748b; --c-accent:#dc2626;
+    --font-ui:'Inter',sans-serif; --font-mono:'JetBrains Mono',monospace;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{font-family:var(--font-ui);background:var(--c-bg);}
+  /* fixed canvas size → 1280x512 (2.5:1). Rendered at 2x for retina crispness. */
+  .frame{width:1280px;height:512px;background:var(--c-bg);padding:28px;}
+  .diagram-canvas{background:var(--c-canvas);border:1px solid var(--c-border);height:100%;padding:26px 30px;display:flex;flex-direction:column;}
+  .diagram-header{border-bottom:1px solid var(--c-border);padding-bottom:12px;margin-bottom:20px;display:flex;justify-content:space-between;align-items:flex-end;}
+  .diagram-title{font-size:21px;font-weight:700;color:var(--c-text-main);letter-spacing:-0.01em;}
+  .diagram-title .sep{color:var(--c-border-strong);font-weight:500;}
+  .diagram-subtitle{font-size:10px;font-weight:600;color:var(--c-text-sub);text-transform:uppercase;letter-spacing:0.14em;}
+
+  .row{display:grid;grid-template-columns:1fr 40px 1fr 40px 1fr;align-items:stretch;flex:1;}
+
+  .step{border:1px solid var(--c-border);display:flex;flex-direction:column;}
+  .step-head{display:flex;align-items:center;gap:8px;padding:9px 12px;border-bottom:1px solid var(--c-border);background:#f1f5f9;}
+  .step-num{font-family:var(--font-mono);font-size:11px;font-weight:600;color:var(--c-canvas);background:var(--c-text-main);padding:2px 7px;letter-spacing:0.04em;}
+  .step-name{font-size:13px;font-weight:700;color:var(--c-text-main);letter-spacing:0.02em;}
+  .step-skill{margin-left:auto;font-family:var(--font-mono);font-size:10px;color:var(--c-text-sub);}
+  .step-body{padding:13px 13px 12px;display:flex;flex-direction:column;gap:8px;flex:1;}
+
+  .field{display:flex;flex-direction:column;gap:2px;}
+  .field .k{font-family:var(--font-mono);font-size:9px;text-transform:uppercase;letter-spacing:0.08em;color:var(--c-text-sub);}
+  .field .v{font-family:var(--font-mono);font-size:12px;color:var(--c-text-main);font-weight:500;}
+  .field .v.out{color:var(--c-text-main);}
+  .script{font-family:var(--font-mono);font-size:11px;color:var(--c-text-main);border:1px solid var(--c-border-strong);padding:3px 7px;align-self:flex-start;background:#f8fafc;}
+  .cap{margin-top:auto;font-size:11px;font-style:italic;color:var(--c-text-sub);line-height:1.35;border-top:1px dashed var(--c-border);padding-top:8px;}
+
+  .arrow{display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:var(--font-mono);}
+  .arrow .lbl{font-size:8px;color:var(--c-text-sub);writing-mode:vertical-rl;transform:rotate(180deg);margin-bottom:6px;letter-spacing:0.06em;}
+  .arrow svg{display:block;}
+
+  .footer{margin-top:18px;border-top:1px solid var(--c-border);padding-top:12px;display:flex;align-items:center;gap:14px;}
+  .hint-chip{font-family:var(--font-mono);font-size:13px;font-weight:600;color:var(--c-text-main);border:2px solid var(--c-text-main);padding:4px 10px;white-space:nowrap;}
+  .hint-desc{font-size:12px;color:var(--c-text-sub);line-height:1.4;}
+  .hint-desc b{color:var(--c-text-main);font-weight:600;}
+  .config-flow{margin-left:auto;font-family:var(--font-mono);font-size:10px;color:var(--c-text-sub);display:flex;align-items:center;gap:8px;white-space:nowrap;}
+  .config-flow .pill{border:1px dashed var(--c-border-strong);padding:2px 7px;color:var(--c-text-main);}
+</style>
+</head>
+<body>
+<div class="frame">
+  <div class="diagram-canvas">
+    <div class="diagram-header">
+      <div class="diagram-title">pptx-from-layouts <span class="sep">·</span> Profile&nbsp;→&nbsp;Author&nbsp;→&nbsp;Render</div>
+      <div class="diagram-subtitle">3-Step Pipeline / Markdown → Branded Deck</div>
+    </div>
+
+    <div class="row">
+      <!-- STEP 1 -->
+      <div class="step">
+        <div class="step-head">
+          <span class="step-num">01</span>
+          <span class="step-name">PROFILE</span>
+          <span class="step-skill">pptx-profile</span>
+        </div>
+        <div class="step-body">
+          <div class="field"><span class="k">Input</span><span class="v">your-template.pptx</span></div>
+          <div class="script">catalog.py</div>
+          <div class="field"><span class="k">Outputs</span><span class="v out">layout-catalog.md</span><span class="v out">config.json</span></div>
+          <div class="cap">“What layouts does my template have?”</div>
+        </div>
+      </div>
+
+      <div class="arrow">
+        <span class="lbl">catalog.md</span>
+        <svg width="40" height="18" viewBox="0 0 40 18"><line x1="0" y1="9" x2="33" y2="9" stroke="#0f172a" stroke-width="1.5"/><path d="M33 4 L39 9 L33 14 Z" fill="#0f172a"/></svg>
+      </div>
+
+      <!-- STEP 2 -->
+      <div class="step">
+        <div class="step-head">
+          <span class="step-num">02</span>
+          <span class="step-name">AUTHOR</span>
+          <span class="step-skill">pptx-author</span>
+        </div>
+        <div class="step-body">
+          <div class="field"><span class="k">Write</span><span class="v">slides.md&nbsp; + &nbsp;[HINT: layout]</span></div>
+          <div class="script">lint_hints.py</div>
+          <div class="field"><span class="k">Output</span><span class="v out">slides.md (lint-clean)</span></div>
+          <div class="cap">“Write slides that name real layouts.”</div>
+        </div>
+      </div>
+
+      <div class="arrow">
+        <span class="lbl">slides.md</span>
+        <svg width="40" height="18" viewBox="0 0 40 18"><line x1="0" y1="9" x2="33" y2="9" stroke="#0f172a" stroke-width="1.5"/><path d="M33 4 L39 9 L33 14 Z" fill="#0f172a"/></svg>
+      </div>
+
+      <!-- STEP 3 -->
+      <div class="step">
+        <div class="step-head">
+          <span class="step-num">03</span>
+          <span class="step-name">RENDER</span>
+          <span class="step-skill">pptx-from-layouts</span>
+        </div>
+        <div class="step-body">
+          <div class="field"><span class="k">Input</span><span class="v">slides.md + template + config</span></div>
+          <div class="script">generate.py</div>
+          <div class="field"><span class="k">Output</span><span class="v out">deck.pptx&nbsp; ✓ validated</span></div>
+          <div class="cap">“Fill the template’s actual placeholders.”</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="footer">
+      <span class="hint-chip">[HINT: layout_name]</span>
+      <span class="hint-desc">The connective tissue: Step&nbsp;1 lists a template’s <b>real layout names</b>, Step&nbsp;2 names one <b>per slide</b>, Step&nbsp;3 fills that <b>exact layout</b>.</span>
+      <span class="config-flow"><span class="pill">config.json</span> ╌╌ shared 1&nbsp;→&nbsp;3 ╌╌▶</span>
+    </div>
+  </div>
+</div>
+</body>
+</html>

@@ -19,6 +19,37 @@ Most PowerPoint generation tools treat templates as backgrounds to overlay text 
 - Places content in proper placeholders
 - Preserves your template's professional design
 
+## The 3-step pipeline
+
+Decks are built in three mapped steps — each is its own skill, so you can run
+them end-to-end or jump in wherever you are.
+
+![PPTX-from-layouts pipeline](docs/pipeline.png)
+
+```text
+  STEP 1 — PROFILE          STEP 2 — AUTHOR           STEP 3 — RENDER
+  pptx-profile              pptx-author               pptx-from-layouts
+  ───────────────           ───────────────           ─────────────────
+  your-template.pptx        slides.md (+ [HINT:])     slides.md + config
+        │                         │                         │
+        ▼                         ▼                         ▼
+   catalog.py  ──catalog.md──▶  write & lint  ──slides──▶  generate.py ─▶ deck.pptx
+        └────────────────── config.json ───────────────────▲   (validated)
+  "what layouts do I        "write slides that        "fill the template's
+   have?"                    name real layouts"        actual placeholders"
+```
+
+| Step | Skill | You give it | You get back |
+|------|-------|-------------|--------------|
+| **1 · Profile** | [`pptx-profile`](.claude/skills/pptx-profile/SKILL.md) | a `.pptx` template | `layout-catalog.md` (the menu of `[HINT:]` names) + `config.json` |
+| **2 · Author** | [`pptx-author`](.claude/skills/pptx-author/SKILL.md) | the catalog + your content | `slides.md` tagged with `[HINT: layout]`, lint-checked |
+| **3 · Render** | [`pptx-from-layouts`](.claude/skills/pptx-from-layouts/SKILL.md) | `slides.md` + template + config | a validated `deck.pptx` |
+
+The **`[HINT: layout_name]`** marker is the connective tissue: Step 1 tells you a
+template's real layout names, Step 2 names them per slide, and Step 3 fills those
+exact layouts. Already know your template (or using the bundled **Inner Chapter**
+one)? Skip straight to Step 3. Full write-up: [docs/workflows.md](docs/workflows.md).
+
 ## Quick Start
 
 ### Install it yourself (one prompt)

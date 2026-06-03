@@ -927,6 +927,50 @@ class LayoutConfigAdapter:
         # Return content_image_right as fallback
         return IC_LAYOUTS.get('content_image_right', {'index': 3, 'name': 'content-image-right-a', 'use': 'fallback'})
 
+    def get_layout_by_name(self, name: str) -> dict | None:
+        """Resolve a layout by its real layout name (or capability key).
+
+        Used by [HINT: ...] / **Layout: ...** to target a template's actual
+        slide-master layout. Searches the ACTIVE config first (so custom,
+        profiled templates resolve their own layout names), then the Inner
+        Chapter defaults. Matches exactly first, then by substring.
+
+        Returns a {'index','name','use'} dict, or None if nothing matches.
+        """
+        def _norm(s: str) -> str:
+            return s.lower().strip().replace(' ', '_').replace('-', '_')
+
+        target = _norm(name)
+
+        # 1. Active custom config: search its layout_mappings by capability key
+        #    and by the real layout_name.
+        if self._use_config and self.config is not None:
+            candidates = []
+            for cap_key, cap in self.config.layout_mappings.items():
+                candidates.append((cap_key, cap.layout_name, cap.layout_index))
+            # Exact match on layout_name or capability key
+            for cap_key, lname, lidx in candidates:
+                if _norm(lname) == target or _norm(cap_key) == target:
+                    return {'index': lidx, 'name': lname, 'use': ''}
+            # Substring match
+            for cap_key, lname, lidx in candidates:
+                if target in _norm(lname) or target in _norm(cap_key):
+                    return {'index': lidx, 'name': lname, 'use': ''}
+            # A custom config is authoritative for its own template. Do NOT fall
+            # back to Inner Chapter layout indices — they may not exist in, or may
+            # mis-map onto, the user's template. Let the caller auto-detect.
+            return None
+
+        # 2. No custom config → Inner Chapter defaults: exact then substring.
+        for key, layout in IC_LAYOUTS.items():
+            if _norm(layout['name']) == target or _norm(key) == target:
+                return dict(layout)
+        for key, layout in IC_LAYOUTS.items():
+            if target in _norm(layout['name']) or target in _norm(key):
+                return dict(layout)
+
+        return None
+
     def get_layout_for_content_type(self, content_type: str) -> dict:
         """Get layout for a content type, going through routing."""
         if self._use_config:
@@ -1331,8 +1375,8 @@ def parse_slide_content(content: str, slide_number: int, ctx: ParseContext = Non
             line = line.strip()
             if line and not line.startswith('#') and not line.startswith('---'):
                 if not line.startswith('**') and not line.startswith('-') and not line.startswith('*'):
-                    # Skip table lines
-                    if '|' not in line:
+                    # Skip table lines and bracketed markers ([HINT:], [IMG:], ...)
+                    if '|' not in line and not line.startswith('['):
                         slide['metadata'].append(line)
     else:
         # Regular slide: use slide label, then H1, then H2 as title
@@ -1357,7 +1401,7 @@ def parse_slide_content(content: str, slide_number: int, ctx: ParseContext = Non
             first_line = None
             for line in content.split('\n'):
                 line = line.strip()
-                if line and not line.startswith('#'):
+                if line and not line.startswith('#') and not line.startswith('['):
                     first_line = line[:50]  # Truncate long lines
                     break
             if first_line:
@@ -1529,8 +1573,8 @@ def parse_slide_content(content: str, slide_number: int, ctx: ParseContext = Non
             # Skip the headline bold line itself
             if re.match(r'^\*\*[^*]+\*\*\s*$', stripped):
                 continue
-            # Skip [Image:] and [Background:] markers
-            if re.match(r'^\[(?:Image|Background):', stripped, re.IGNORECASE):
+            # Skip [Image:], [Background:], [HINT:], [IMG:], [LOGO:], [NOTES:] markers
+            if re.match(r'^\[(?:Image|Background|HINT|IMG|LOGO|NOTES):', stripped, re.IGNORECASE):
                 continue
             # Skip table rows
             if '|' in stripped and re.search(r'\|.*\|', stripped):
@@ -1663,6 +1707,16 @@ def parse_slide_content(content: str, slide_number: int, ctx: ParseContext = Non
 
             if leading_lines:
                 slide['leading_text'] = '\n'.join(leading_lines)
+
+    # Check for [HINT: layout_name] — the Step-2 authoring marker.
+    # A hint names one of the template's REAL slide-master layouts (the names
+    # emitted by Step 1 / pptx-profile into layout-catalog.md). It is the same
+    # mechanism as **Layout:**, just the friendlier syntax borrowed from the
+    # IC deck renderer. An explicit **Layout:** marker, if present, wins.
+    if not slide.get('layout_override'):
+        hint_match = re.search(r'\[HINT:\s*([^\]]+)\]', content, re.IGNORECASE)
+        if hint_match:
+            slide['layout_override'] = hint_match.group(1).strip()
 
     # Check for explicit **Title:** marker (with phase prefix support)
     # Pattern: **Title:** {blue}Phase N: Label{/blue}Title Text
@@ -3268,6 +3322,8 @@ def extract_story_card_body(content: str) -> dict:
     text = re.sub(r'\*\*Visual:\s*[^*]+\*\*', '', text, flags=re.IGNORECASE)
     # Remove layout override marker
     text = re.sub(r'\*\*Layout:\s*[^*]+\*\*', '', text, flags=re.IGNORECASE)
+    # Remove [HINT: layout_name] marker
+    text = re.sub(r'\[HINT:\s*[^\]]+\]', '', text, flags=re.IGNORECASE)
     # Remove slide header
     text = re.sub(r'^# Slide \d+.*$', '', text, flags=re.MULTILINE)
 
@@ -3554,20 +3610,18 @@ def select_layout(slide: dict) -> dict:
     """
     config = get_layout_config()
 
-    # Check for explicit layout override first
+    # Check for explicit layout override first ([HINT: ...] or **Layout: ...**).
+    # Resolves against the ACTIVE template config so custom/profiled templates
+    # honor their own layout names — then falls back to Inner Chapter defaults.
     layout_override = slide.get('layout_override', '').strip()
     if layout_override:
-        # Try to find matching layout by name in IC_LAYOUTS (for backwards compat)
-        layout_name_normalized = layout_override.lower().replace(' ', '_').replace('-', '_')
-        for key, layout in IC_LAYOUTS.items():
-            if layout['name'].lower().replace('-', '_') == layout_name_normalized:
-                return {**layout, 'match_type': 'explicit_override'}
-        # If not found by exact name, try partial match
-        for key, layout in IC_LAYOUTS.items():
-            if layout_name_normalized in layout['name'].lower().replace('-', '_'):
-                return {**layout, 'match_type': 'explicit_override'}
+        matched = config.get_layout_by_name(layout_override)
+        if matched:
+            return {**matched, 'match_type': 'explicit_override'}
         # If still not found, warn but continue with auto-detection
-        print(f"Warning: Layout override '{layout_override}' not found, using auto-detection", file=sys.stderr)
+        print(f"Warning: Layout hint '{layout_override}' did not match any layout "
+              f"in the active template; using auto-detection. Run pptx-profile to "
+              f"see this template's valid layout names.", file=sys.stderr)
 
     content_type = slide.get('content_type', 'content')
 
